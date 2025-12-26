@@ -92,6 +92,7 @@ jobs:
             --assume-yes-for-downloads \
             --output-dir=dist \
             --output-filename=posprinter \
+            --include-package-data=escpos \
             posprinter
 
           if command -v ccache &> /dev/null; then
