@@ -33,7 +33,7 @@ CONNECTION_CONFIG = {
 # Налаштування розмірів (для тексту)
 PRINTER_SETUP = {
     "printer_total_chars": 48,  # Фізична ширина (48 для 80мм)
-    "paper_width_chars": 32,  # Робоча область (32 для 58мм або відступів)
+    "paper_width_chars": 48,  # Робоча область (32 для 58мм або відступів)
 }
 
 IMAGE_FILENAME = "logo.png"  # Назва файлу поруч зі скриптом
@@ -155,62 +155,38 @@ def run_test():
             "profile": {
                 "printer_total_chars": PRINTER_SETUP["printer_total_chars"],
                 "paper_width_chars": PRINTER_SETUP["paper_width_chars"],
-                "image_width_px": 900,
+                "image_width_px": 500,
             },
             "tasks": [
                 # Заголовок
                 {
                     "type": "text",
-                    "value": "--- POS PRINTER TEST ---",
+                    "value": "ОФФЛАЙН ТАЛОН\n\n",
                     "align": "center",
                 },
-                {"type": "feed", "lines": 1},
-                # Текст зліва
                 {
                     "type": "text",
-                    "value": f"Port: {CONNECTION_CONFIG.get('port', 'Unknown')}",
+                    "value": 'ТРЦ "РайON" м. Київ, вул.Лаврухіна 4\n'
+                    'ТОВ "Європаркінг", 063-6422712\n'
+                    "Талон обов'язковий для в'їзду\n"
+                    "Нічний тариф - оплата з 1 хв",
                     "align": "left",
                 },
-                {
-                    "type": "text",
-                    "value": "Status: Connected",
-                    "align": "left",
-                },
-                # Картинка
-                {
-                    "type": "image",
-                    "data": img_data,
-                    "align": "center",
-                },
-                # Таблиця
-                {
-                    "type": "table",
-                    "data": [
-                        ["Item A", "100.00"],
-                        ["Item B long name", "50.50"],
-                        ["Discount", "-10.00"],
-                        ["TOTAL", "140.50"],
-                    ],
-                    "columns_ratio": [0.65, 0.35],
-                    "align": "left",
-                    **PRINTER_SETUP,
-                },
-                # Футер
-                {"type": "feed", "lines": 1},
-                {
-                    "type": "text",
-                    "value": "Дякуємо за покупку!",
-                    "align": "center",
-                    **PRINTER_SETUP,
-                },
-                {
-                    "type": "text",
-                    "value": "Slava Ukraini!",
-                    "align": "center",
-                    **PRINTER_SETUP,
-                },
-                # Обрізка
                 {"type": "feed", "lines": 2},
+                {
+                    "type": "text",
+                    "value": "В'їзд: 25.06.2024 14:30",
+                    "align": "center",
+                },
+                {"type": "feed", "lines": 2},
+                {
+                    "type": "text",
+                    "value": "Безкоштовно 60хв\n"
+                    "Кожна наступна година - 30 грн\n"
+                    "Доба - 200 грн\n"
+                    "За втрату талону штраф 300 грн",
+                    "align": "left",
+                },
                 {"type": "cut"},
             ],
         }
@@ -219,16 +195,8 @@ def run_test():
         msg = json.dumps(req_print) + "\n"
         process.stdin.write(msg.encode("utf-8"))
         process.stdin.flush()
-
-        try:
-            # На друк даємо більше часу
-            resp = read_response_with_timeout(process, q_stdout, q_stderr, timeout=15)
-            safe_log_response(resp)
-        except TimeoutError:
-            print("⏰ Timeout on Print Job")
-
-        process.stdin.write(msg.encode("utf-8"))
-        process.stdin.flush()
+        print(">>> Print Job Sent. Awaiting response...")
+        print(json.dumps(req_print, indent=2, ensure_ascii=False))
 
         try:
             # На друк даємо більше часу
