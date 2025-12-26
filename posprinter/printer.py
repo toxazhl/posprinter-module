@@ -90,7 +90,8 @@ class PrinterHandler:
             self.p.profile.profile_data["media"]["width"].pop("pixels", None)
 
             self.p._raw(b"\x1b\x40")
-            self.p._raw(b"\x1b\x74\x11")
+            # self.p._raw(b"\x1b\x74\x11")
+            self.p._raw(b"\x1b\x74\x49")
 
             self.is_connected = True
 
@@ -171,27 +172,56 @@ class PrinterHandler:
             self.p.set(align="left")
 
         if isinstance(task, TextTask):
+            # НЕ ЗАБУДЬ import textwrap ЗВЕРХУ, БОВДУР
+            import textwrap
+
+            # 1. Рахуємо відступ зліва (щоб центрувати сам "аркуш" на "принтері")
             margin_base = max(
                 0, (profile.printer_total_chars - profile.paper_width_chars) // 2
             )
 
-            text = task.value
-            text_len = len(text)
-            if text_len > profile.paper_width_chars:
-                text = text[: profile.paper_width_chars]
-                text_len = profile.paper_width_chars
-
+            width = profile.paper_width_chars
             align = task.align.lower()
-            padding = 0
-            if align == "center":
-                padding = (profile.paper_width_chars - text_len) // 2
-            elif align == "right":
-                padding = profile.paper_width_chars - text_len
+            original_text = task.value
 
-            full_padding = margin_base + padding
-            line = (" " * full_padding) + text
-            self.p._raw(line.encode("cp866", "replace") + b"\n")
+            # 2. Спочатку розбиваємо текст по ЯВНИХ переносах рядків (\n), які ти туди запхав
+            # keepends=False, щоб прибрати самі \n, ми їх додамо потім
+            explicit_lines = original_text.split("\n")
 
+            for paragraph in explicit_lines:
+                # Якщо рядок порожній (наприклад, два \n підряд), просто друкуємо пустий рядок
+                if not paragraph:
+                    self.p._raw(b"\n")
+                    continue
+
+                # 3. Тепер ріжемо довгі рядки, щоб вони влізли в ширину паперу
+                # break_long_words=True розрубає навіть довгі слова, щоб не вилізло за межі
+                wrapped_chunks = textwrap.wrap(
+                    paragraph, width=width, break_long_words=True
+                )
+
+                if not wrapped_chunks:
+                    # На випадок якоїсь магії, якщо текст був, а чанків нема
+                    self.p._raw(b"\n")
+                    continue
+
+                # 4. Обробляємо КОЖЕН шматок (рядок) окремо
+                for chunk in wrapped_chunks:
+                    chunk_len = len(chunk)
+                    padding = 0
+
+                    # Рахуємо відступ для вирівнювання всередині ширини паперу
+                    if align == "center":
+                        padding = (width - chunk_len) // 2
+                    elif align == "right":
+                        padding = width - chunk_len
+
+                    # 5. Збираємо все до купи: Базовий відступ + Відступ вирівнювання + Текст
+                    full_padding = margin_base + padding
+                    final_line = (" " * full_padding) + chunk
+
+                    # Відправляємо на друк
+                    self.p._raw(final_line.encode("cp1251", "replace") + b"\n")
         elif isinstance(task, TableTask):
             margin_base = max(
                 0, (profile.printer_total_chars - profile.paper_width_chars) // 2
@@ -214,7 +244,7 @@ class PrinterHandler:
                     else:
                         line_buffer += text_cut.ljust(width)
                 final_line = (" " * margin_base) + line_buffer
-                self.p._raw(final_line.encode("cp866", "replace") + b"\n")
+                self.p._raw(final_line.encode("cp1251", "replace") + b"\n")
 
         elif isinstance(task, ImageTask):
             self.p.set(align="center")
