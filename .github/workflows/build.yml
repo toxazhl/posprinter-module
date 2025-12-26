@@ -32,7 +32,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Встановлюємо uv - це єдине нормальне, що ти приніс
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -42,7 +41,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
 
-      # Системні залежності. Тільки спробуй щось змінити.
+      # Системні залежності
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -56,38 +55,38 @@ jobs:
           brew install ccache
           echo "CC=clang" >> $GITHUB_ENV
 
-      # На Windows Nuitka сама підтягне MinGW64, бо MSVC це біль.
-      # Але ccache на вінді через choco ставити — це лотерея, тому тут без нього явно.
-
-      # Кешування Nuitka (скачані компілятори, ccache об'єкти)
       - name: Cache Nuitka & CCache
         uses: actions/cache@v4
         with:
           path: |
             ${{ env.NUITKA_CACHE_DIR }}
             ${{ env.CCACHE_DIR }}
+            # Для Windows кеш в іншому місці, додаємо його явно
             C:\Users\runneradmin\AppData\Local\Nuitka\Nuitka\Cache
           key: ${{ runner.os }}-nuitka-${{ hashFiles('uv.lock') }}
           restore-keys: |
             ${{ runner.os }}-nuitka-
 
+      # ВАЖЛИВО: Прибрав --no-dev, щоб встановилась Nuitka та інші тулзи
       - name: Install Project Dependencies
-        run: uv sync --frozen --no-dev
+        run: uv sync --frozen
 
-      # Власне білд.
-      # LTO=yes, як ти і просив, хоч це і повільно.
-      # --output-dir=dist - ВІДНОСНИЙ шлях, а не /app/dist, бо на вінді /app/dist це срака.
       - name: Build with Nuitka
         shell: bash
         run: |
-          source .venv/bin/activate || source .venv/Scripts/activate
-          
-          # Для налагодження, якщо ccache є
+          # Налаштовуємо ccache (якщо є)
           if command -v ccache &> /dev/null; then
              ccache -z
+             export NUITKA_CCACHE_BINARY=$(which ccache)
           fi
 
-          python -m nuitka \
+          echo "Starting build..."
+          
+          # ВИКОРИСТОВУЄМО uv run! 
+          # Він сам активує venv, сам знайде nuitka.
+          # Не треба ніяких source activate.
+          
+          uv run python -m nuitka \
             --standalone \
             --lto=yes \
             --assume-yes-for-downloads \
