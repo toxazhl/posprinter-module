@@ -11,3 +11,8 @@ dependencies = [
     "pyserial>=3.5",
     "pywin32>=311",
 ]
+
+[dependency-groups]
+dev = [
+    "nuitka>=2.8.9",
+]

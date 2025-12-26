@@ -1,0 +1,108 @@
+name: Build Nuitka App
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            executable_ext: ""
+            dist_dir: "posprinter.dist"
+          - os: windows-latest
+            executable_ext: ".exe"
+            dist_dir: "posprinter.dist"
+          - os: macos-latest
+            executable_ext: ".bin"
+            dist_dir: "posprinter.dist"
+
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.os }}
+
+    env:
+      NUITKA_CACHE_DIR: ${{ github.workspace }}/.nuitka_cache
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Встановлюємо uv - це єдине нормальне, що ти приніс
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: ${{ runner.os }}
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      # Системні залежності. Тільки спробуй щось змінити.
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache clang patchelf libfuse2
+          echo "CC=clang" >> $GITHUB_ENV
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install ccache
+          echo "CC=clang" >> $GITHUB_ENV
+
+      # На Windows Nuitka сама підтягне MinGW64, бо MSVC це біль.
+      # Але ccache на вінді через choco ставити — це лотерея, тому тут без нього явно.
+
+      # Кешування Nuitka (скачані компілятори, ccache об'єкти)
+      - name: Cache Nuitka & CCache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.NUITKA_CACHE_DIR }}
+            ${{ env.CCACHE_DIR }}
+            C:\Users\runneradmin\AppData\Local\Nuitka\Nuitka\Cache
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-nuitka-
+
+      - name: Install Project Dependencies
+        run: uv sync --frozen --no-dev
+
+      # Власне білд.
+      # LTO=yes, як ти і просив, хоч це і повільно.
+      # --output-dir=dist - ВІДНОСНИЙ шлях, а не /app/dist, бо на вінді /app/dist це срака.
+      - name: Build with Nuitka
+        shell: bash
+        run: |
+          source .venv/bin/activate || source .venv/Scripts/activate
+          
+          # Для налагодження, якщо ccache є
+          if command -v ccache &> /dev/null; then
+             ccache -z
+          fi
+
+          python -m nuitka \
+            --standalone \
+            --lto=yes \
+            --assume-yes-for-downloads \
+            --output-dir=dist \
+            --output-filename=posprinter \
+            posprinter
+
+          if command -v ccache &> /dev/null; then
+             ccache -s
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: posprinter-${{ matrix.os }}
+          path: |
+            dist/${{ matrix.dist_dir }}/**/*
+            dist/posprinter${{ matrix.executable_ext }}
