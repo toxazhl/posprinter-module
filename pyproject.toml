@@ -9,7 +9,7 @@ dependencies = [
     "pillow>=12.0.0",
     "pydantic>=2.12.5",
     "pyserial>=3.5",
-    "pywin32>=311",
+    "pywin32>=311; sys_platform == "win32"",
 ]
 
 [dependency-groups]
