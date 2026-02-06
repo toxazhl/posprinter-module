@@ -2,7 +2,7 @@ import base64
 import time
 from io import BytesIO
 
-# Імпортуємо класи принтерів
+import fitz
 from escpos.printer import Dummy, Escpos, Network, Serial
 
 try:
@@ -19,6 +19,7 @@ from posprinter.models import (
     FeedTask,
     ImageTask,
     NetworkConnection,
+    PdfTask,
     PrinterProfile,
     PrinterStatusData,
     PrintTask,
@@ -168,7 +169,7 @@ class PrinterHandler:
         if not self.is_connected:
             self.connect()
 
-        if not isinstance(task, ImageTask):
+        if not isinstance(task, (ImageTask, PdfTask)):
             self.p.set(align="left")
 
         if isinstance(task, TextTask):
@@ -248,20 +249,18 @@ class PrinterHandler:
 
         elif isinstance(task, ImageTask):
             self.p.set(align="center")
-            try:
-                img_bytes = base64.b64decode(task.data)
-                img = Image.open(BytesIO(img_bytes))
-                if img.mode != "1":
-                    img = img.convert("1")
-                ratio = profile.image_width_px / float(img.width)
-                new_h = int(img.height * ratio)
-                img = img.resize(
-                    (profile.image_width_px, new_h), Image.Resampling.LANCZOS
-                )
-                self.p.image(img, impl="bitImageRaster")
-                self.p.set(align="left")
-            except Exception:
-                pass
+            img_bytes = base64.b64decode(task.data)
+            self.print_image(img_bytes, profile)
+            self.p.set(align="left")
+
+        elif isinstance(task, PdfTask):
+            images = pdf_to_base64_images(base64.b64decode(task.data))
+            for img_str in images:
+                self.p.set(align="center")
+                img_bytes = base64.b64decode(img_str)
+                self.print_image(img_bytes, profile)
+
+            self.p.set(align="left")
 
         elif isinstance(task, FeedTask):
             self.p._raw(b"\n" * task.lines)
@@ -272,3 +271,39 @@ class PrinterHandler:
 
         elif isinstance(task, RawTask):
             self.p._raw(bytes.fromhex(task.hex_data.replace(" ", "")))
+
+    def print_image(self, img_bytes: bytes, profile: PrinterProfile):
+        img = Image.open(BytesIO(img_bytes))
+        if img.mode != "1":
+            img = img.convert("1")
+        ratio = profile.image_width_px / float(img.width)
+        new_h = int(img.height * ratio)
+        img = img.resize((profile.image_width_px, new_h), Image.Resampling.LANCZOS)
+        self.p.image(img, impl="bitImageRaster")
+
+
+def pdf_to_base64_images(pdf_bytes: bytes):
+    result = []
+
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except Exception as e:
+        print(f"Це не PDF, йолопе: {e}")
+        return []
+
+    for page_num in range(len(doc)):
+        page = doc.load_page(page_num)
+
+        zoom_matrix = fitz.Matrix(4, 4)
+
+        pix = page.get_pixmap(matrix=zoom_matrix, alpha=False)
+
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        result.append(img_str)
+
+    doc.close()
+    return result

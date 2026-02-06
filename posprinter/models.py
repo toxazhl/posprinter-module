@@ -43,6 +43,11 @@ class ImageTask(BaseTask):
     data: str  # Base64 string
 
 
+class PdfTask(BaseTask):
+    type: Literal["pdf"]
+    data: str  # Base64 string
+
+
 class FeedTask(BaseModel):
     type: Literal["feed"]
     lines: int = Field(default=1, ge=1, le=10)
@@ -58,7 +63,7 @@ class RawTask(BaseModel):
 
 
 PrintTask = Annotated[
-    Union[TextTask, ImageTask, TableTask, FeedTask, CutTask, RawTask],
+    Union[TextTask, ImageTask, PdfTask, TableTask, FeedTask, CutTask, RawTask],
     Field(discriminator="type"),
 ]
 
