@@ -11,7 +11,7 @@ import time
 # Варіант А: Serial (COM порт)
 CONNECTION_CONFIG = {
     "type": "serial",
-    "port": "COM3",  # Зміни на свій порт!
+    "port": "/dev/cu.usbmodem8E748C6505371",  # Зміни на свій порт!
     "baudrate": 115200,  # Перевір швидкість принтера (9600, 19200, 115200)
     "timeout": 2,
     "dsrdtr": True,
@@ -36,7 +36,8 @@ PRINTER_SETUP = {
     "paper_width_chars": 48,  # Робоча область (32 для 58мм або відступів)
 }
 
-IMAGE_FILENAME = "logo.png"  # Назва файлу поруч зі скриптом
+IMAGE_FILENAME = "rec.png"  # Назва файлу поруч зі скриптом
+PDF_FILENAME = "TEST_kzDbXXeB9OvI5Q.pdf"  # Назва PDF файлу поруч зі скриптом
 
 # --- 2. ДОПОМІЖНІ ФУНКЦІЇ ---
 
@@ -147,6 +148,7 @@ def run_test():
 
         # 1. Беремо картинку
         img_data = image_to_base64(IMAGE_FILENAME)
+        pdf_data = image_to_base64(PDF_FILENAME)
 
         # 2. Формуємо запит (Згідно з новим Pydantic models)
         req_print = {
@@ -155,38 +157,47 @@ def run_test():
             "profile": {
                 "printer_total_chars": PRINTER_SETUP["printer_total_chars"],
                 "paper_width_chars": PRINTER_SETUP["paper_width_chars"],
-                "image_width_px": 500,
+                "image_width_px": 450,
             },
             "tasks": [
                 # Заголовок
                 {
-                    "type": "text",
-                    "value": "ОФФЛАЙН ТАЛОН\n\n",
-                    "align": "center",
+                    "type": "image",
+                    "data": img_data,
                 },
+                {"type": "cut"},
                 {
-                    "type": "text",
-                    "value": 'ТРЦ "РайON" м. Київ, вул.Лаврухіна 4\n'
-                    'ТОВ "Європаркінг", 063-6422712\n'
-                    "Талон обов'язковий для в'їзду\n"
-                    "Нічний тариф - оплата з 1 хв",
-                    "align": "left",
+                    "type": "pdf",
+                    "data": pdf_data,
                 },
-                {"type": "feed", "lines": 2},
-                {
-                    "type": "text",
-                    "value": "В'їзд: 25.06.2024 14:30",
-                    "align": "center",
-                },
-                {"type": "feed", "lines": 2},
-                {
-                    "type": "text",
-                    "value": "Безкоштовно 60хв\n"
-                    "Кожна наступна година - 30 грн\n"
-                    "Доба - 200 грн\n"
-                    "За втрату талону штраф 300 грн",
-                    "align": "left",
-                },
+                # {
+                #     "type": "text",
+                #     "value": "ОФФЛАЙН ТАЛОН\n\n",
+                #     "align": "center",
+                # },
+                # {
+                #     "type": "text",
+                #     "value": 'ТРЦ "РайON" м. Київ, вул.Лаврухіна 4\n'
+                #     'ТОВ "Європаркінг", 063-6422712\n'
+                #     "Талон обов'язковий для в'їзду\n"
+                #     "Нічний тариф - оплата з 1 хв",
+                #     "align": "left",
+                # },
+                # {"type": "feed", "lines": 2},     о
+                # {
+                #     "type": "text",
+                #     "value": "В'їзд: 25.06.2024 14:30",
+                #     "align": "center",
+                # },
+                # {"type": "feed", "lines": 2},
+                # {
+                #     "type": "text",
+                #     "value": "Безкоштовно 60хв\n"
+                #     "Кожна наступна година - 30 грн\n"
+                #     "Доба - 200 грн\n"
+                #     "За втрату талону штраф 300 грн",
+                #     "align": "left",
+                # },
                 {"type": "cut"},
             ],
         }
