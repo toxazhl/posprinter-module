@@ -49,7 +49,10 @@ class PrinterService:
 
     def close_all(self):
         for h in self._handlers.values():
-            h.close()
+            try:
+                h.close()
+            except Exception:
+                pass
         self._handlers.clear()
 
     # --- API Methods ---
