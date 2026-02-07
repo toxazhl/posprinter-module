@@ -39,9 +39,11 @@ class PrinterService:
                 handler.close()
                 del self._handlers[resource_key]
             else:
+                handler.connect_if_needed()
                 return handler
 
         handler = PrinterHandler(config)
+        handler.connect_if_needed()
         self._handlers[resource_key] = handler
         return handler
 
