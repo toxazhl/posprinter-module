@@ -272,6 +272,8 @@ class PrinterHandler:
         elif isinstance(task, RawTask):
             self.p._raw(bytes.fromhex(task.hex_data.replace(" ", "")))
 
+        self.p.close()
+
     def print_image(self, img_bytes: bytes, profile: PrinterProfile):
         img = Image.open(BytesIO(img_bytes))
         if img.mode == "1":
