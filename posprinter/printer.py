@@ -107,10 +107,7 @@ class PrinterHandler:
 
     def close(self):
         if self.p:
-            try:
-                self.p.close()
-            except Exception:
-                pass
+            self.p.close()
         self.p = None
         self.is_connected = False
 
@@ -166,113 +163,113 @@ class PrinterHandler:
         self.close()
 
     def process_task(self, task: PrintTask, profile: PrinterProfile):
-        if not self.is_connected:
-            self.connect()
+        self.connect_if_needed()
+        try:
+            if not isinstance(task, (ImageTask, PdfTask)):
+                self.p.set(align="left")
 
-        if not isinstance(task, (ImageTask, PdfTask)):
-            self.p.set(align="left")
+            if isinstance(task, TextTask):
+                # НЕ ЗАБУДЬ import textwrap ЗВЕРХУ, БОВДУР
+                import textwrap
 
-        if isinstance(task, TextTask):
-            # НЕ ЗАБУДЬ import textwrap ЗВЕРХУ, БОВДУР
-            import textwrap
-
-            # 1. Рахуємо відступ зліва (щоб центрувати сам "аркуш" на "принтері")
-            margin_base = max(
-                0, (profile.printer_total_chars - profile.paper_width_chars) // 2
-            )
-
-            width = profile.paper_width_chars
-            align = task.align.lower()
-            original_text = task.value
-
-            # 2. Спочатку розбиваємо текст по ЯВНИХ переносах рядків (\n), які ти туди запхав
-            # keepends=False, щоб прибрати самі \n, ми їх додамо потім
-            explicit_lines = original_text.split("\n")
-
-            for paragraph in explicit_lines:
-                # Якщо рядок порожній (наприклад, два \n підряд), просто друкуємо пустий рядок
-                if not paragraph:
-                    self.p._raw(b"\n")
-                    continue
-
-                # 3. Тепер ріжемо довгі рядки, щоб вони влізли в ширину паперу
-                # break_long_words=True розрубає навіть довгі слова, щоб не вилізло за межі
-                wrapped_chunks = textwrap.wrap(
-                    paragraph, width=width, break_long_words=True
+                # 1. Рахуємо відступ зліва (щоб центрувати сам "аркуш" на "принтері")
+                margin_base = max(
+                    0, (profile.printer_total_chars - profile.paper_width_chars) // 2
                 )
 
-                if not wrapped_chunks:
-                    # На випадок якоїсь магії, якщо текст був, а чанків нема
-                    self.p._raw(b"\n")
-                    continue
+                width = profile.paper_width_chars
+                align = task.align.lower()
+                original_text = task.value
 
-                # 4. Обробляємо КОЖЕН шматок (рядок) окремо
-                for chunk in wrapped_chunks:
-                    chunk_len = len(chunk)
-                    padding = 0
+                # 2. Спочатку розбиваємо текст по ЯВНИХ переносах рядків (\n), які ти туди запхав
+                # keepends=False, щоб прибрати самі \n, ми їх додамо потім
+                explicit_lines = original_text.split("\n")
 
-                    # Рахуємо відступ для вирівнювання всередині ширини паперу
-                    if align == "center":
-                        padding = (width - chunk_len) // 2
-                    elif align == "right":
-                        padding = width - chunk_len
+                for paragraph in explicit_lines:
+                    # Якщо рядок порожній (наприклад, два \n підряд), просто друкуємо пустий рядок
+                    if not paragraph:
+                        self.p._raw(b"\n")
+                        continue
 
-                    # 5. Збираємо все до купи: Базовий відступ + Відступ вирівнювання + Текст
-                    full_padding = margin_base + padding
-                    final_line = (" " * full_padding) + chunk
+                    # 3. Тепер ріжемо довгі рядки, щоб вони влізли в ширину паперу
+                    # break_long_words=True розрубає навіть довгі слова, щоб не вилізло за межі
+                    wrapped_chunks = textwrap.wrap(
+                        paragraph, width=width, break_long_words=True
+                    )
 
-                    # Відправляємо на друк
+                    if not wrapped_chunks:
+                        # На випадок якоїсь магії, якщо текст був, а чанків нема
+                        self.p._raw(b"\n")
+                        continue
+
+                    # 4. Обробляємо КОЖЕН шматок (рядок) окремо
+                    for chunk in wrapped_chunks:
+                        chunk_len = len(chunk)
+                        padding = 0
+
+                        # Рахуємо відступ для вирівнювання всередині ширини паперу
+                        if align == "center":
+                            padding = (width - chunk_len) // 2
+                        elif align == "right":
+                            padding = width - chunk_len
+
+                        # 5. Збираємо все до купи: Базовий відступ + Відступ вирівнювання + Текст
+                        full_padding = margin_base + padding
+                        final_line = (" " * full_padding) + chunk
+
+                        # Відправляємо на друк
+                        self.p._raw(final_line.encode("cp1251", "replace") + b"\n")
+            elif isinstance(task, TableTask):
+                margin_base = max(
+                    0, (profile.printer_total_chars - profile.paper_width_chars) // 2
+                )
+                cols_count = len(task.columns_ratio)
+                for row in task.data:
+                    if len(row) != cols_count:
+                        continue
+                    col_widths = [
+                        int(profile.paper_width_chars * ratio)
+                        for ratio in task.columns_ratio
+                    ]
+                    col_widths[-1] = profile.paper_width_chars - sum(col_widths[:-1])
+                    line_buffer = ""
+                    for i, text in enumerate(row):
+                        width = col_widths[i]
+                        text_cut = text[:width]
+                        if i == cols_count - 1:
+                            line_buffer += text_cut.rjust(width)
+                        else:
+                            line_buffer += text_cut.ljust(width)
+                    final_line = (" " * margin_base) + line_buffer
                     self.p._raw(final_line.encode("cp1251", "replace") + b"\n")
-        elif isinstance(task, TableTask):
-            margin_base = max(
-                0, (profile.printer_total_chars - profile.paper_width_chars) // 2
-            )
-            cols_count = len(task.columns_ratio)
-            for row in task.data:
-                if len(row) != cols_count:
-                    continue
-                col_widths = [
-                    int(profile.paper_width_chars * ratio)
-                    for ratio in task.columns_ratio
-                ]
-                col_widths[-1] = profile.paper_width_chars - sum(col_widths[:-1])
-                line_buffer = ""
-                for i, text in enumerate(row):
-                    width = col_widths[i]
-                    text_cut = text[:width]
-                    if i == cols_count - 1:
-                        line_buffer += text_cut.rjust(width)
-                    else:
-                        line_buffer += text_cut.ljust(width)
-                final_line = (" " * margin_base) + line_buffer
-                self.p._raw(final_line.encode("cp1251", "replace") + b"\n")
 
-        elif isinstance(task, ImageTask):
-            self.p.set(align="center")
-            img_bytes = base64.b64decode(task.data)
-            self.print_image(img_bytes, profile)
-            self.p.set(align="left")
-
-        elif isinstance(task, PdfTask):
-            images = pdf_to_base64_images(base64.b64decode(task.data))
-            for img_str in images:
+            elif isinstance(task, ImageTask):
                 self.p.set(align="center")
-                img_bytes = base64.b64decode(img_str)
+                img_bytes = base64.b64decode(task.data)
                 self.print_image(img_bytes, profile)
+                self.p.set(align="left")
 
-            self.p.set(align="left")
+            elif isinstance(task, PdfTask):
+                images = pdf_to_base64_images(base64.b64decode(task.data))
+                for img_str in images:
+                    self.p.set(align="center")
+                    img_bytes = base64.b64decode(img_str)
+                    self.print_image(img_bytes, profile)
 
-        elif isinstance(task, FeedTask):
-            self.p._raw(b"\n" * task.lines)
+                self.p.set(align="left")
 
-        elif isinstance(task, CutTask):
-            self.p._raw(b"\n\n\n")
-            self.p.cut(mode="PART")
+            elif isinstance(task, FeedTask):
+                self.p._raw(b"\n" * task.lines)
 
-        elif isinstance(task, RawTask):
-            self.p._raw(bytes.fromhex(task.hex_data.replace(" ", "")))
+            elif isinstance(task, CutTask):
+                self.p._raw(b"\n\n\n")
+                self.p.cut(mode="PART")
 
-        self.p.close()
+            elif isinstance(task, RawTask):
+                self.p._raw(bytes.fromhex(task.hex_data.replace(" ", "")))
+
+        finally:
+            self.close()
 
     def print_image(self, img_bytes: bytes, profile: PrinterProfile):
         img = Image.open(BytesIO(img_bytes))
