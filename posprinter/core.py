@@ -92,11 +92,13 @@ class PrinterService:
         handler = self._get_handler(request.connection)
         p = handler.p
         print_calibration_image(p, request.start, request.end, request.step)
+        handler.close()
 
     def print_calibration_text(self, request: PrintCalibrationTextRequest) -> None:
         handler = self._get_handler(request.connection)
         p = handler.p
         print_calibration_text(p, request.start, request.end, request.step)
+        handler.close()
 
 
 _service_instance = PrinterService()

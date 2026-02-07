@@ -4,13 +4,12 @@ from io import BytesIO
 
 import pypdfium2 as pdfium
 from escpos.printer import Dummy, Escpos, Network, Serial
+from PIL import Image
 
 try:
     from escpos.printer import Win32Raw
 except ImportError:
-    Win32Raw = None  # type: ignore
-
-from PIL import Image
+    Win32Raw = None
 
 from posprinter.models import (
     ConnectionConfig,
@@ -108,6 +107,7 @@ class PrinterHandler:
     def close(self):
         if self.p:
             self.p.close()
+        del self.p
         self.p = None
         self.is_connected = False
 
@@ -281,6 +281,53 @@ class PrinterHandler:
         img = img.resize((profile.image_width_px, new_h), Image.Resampling.LANCZOS)
         # img = img.convert("1", dither=Image.Dither.FLOYDSTEINBERG)
         self.p.image(img, impl="bitImageRaster")
+
+    def print_raw_win32(self, task, profile):
+        """
+        Цей метод друкує RAW дані напряму в Windows Spooler без зайвих класів.
+        Він гарантовано закриває хендл і відпускає чергу.
+        """
+        import win32print
+
+        printer_name = self.config.printer_name
+        hPrinter = win32print.OpenPrinter(printer_name)
+
+        try:
+            # Починаємо документ. "RAW" - це ключ!
+            hJob = win32print.StartDocPrinter(hPrinter, 1, ("POS_Receipt", None, "RAW"))
+
+            try:
+                # Починаємо сторінку (для сумісності)
+                win32print.StartPagePrinter(hPrinter)
+
+                # --- ГЕНЕРАЦІЯ БАЙТІВ (Тут твоя логіка формування чека) ---
+                # Ми використовуємо Dummy принтер, щоб згенерувати байти, не відправляючи їх нікуди
+                dummy_p = Dummy(profile=profile)
+
+                # Копіпастимо логіку обробки Task сюди (або виносимо в окремий метод generate_bytes)
+                if isinstance(task, TextTask):
+                    # ... (Твій код з textwrap, але пиши в dummy_p._raw) ...
+                    pass
+                elif isinstance(task, CutTask):
+                    dummy_p.cut()
+                # ... і так далі для всіх типів завдань ...
+
+                # Отримуємо готовий байт-код
+                raw_data = dummy_p.output
+
+                # --- ВІДПРАВКА ---
+                # Пишемо весь шматок байтів за один раз!
+                win32print.WritePrinter(hPrinter, raw_data)
+
+            finally:
+                # ЗАКІНЧУЄМО СТОРІНКУ
+                win32print.EndPagePrinter(hPrinter)
+                # ЗАКІНЧУЄМО ДОКУМЕНТ (ОСЬ ЦЕ ВІДПУСКАЄ СПУЛЕР!)
+                win32print.EndDocPrinter(hPrinter)
+
+        finally:
+            # ЗАКРИВАЄМО ХЕНДЛ
+            win32print.ClosePrinter(hPrinter)
 
 
 def pdf_to_base64_images(pdf_bytes: bytes):
