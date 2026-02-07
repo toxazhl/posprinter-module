@@ -274,11 +274,13 @@ class PrinterHandler:
 
     def print_image(self, img_bytes: bytes, profile: PrinterProfile):
         img = Image.open(BytesIO(img_bytes))
-        if img.mode != "1":
-            img = img.convert("1")
+        if img.mode == "1":
+            img = img.convert("RGB")
         ratio = profile.image_width_px / float(img.width)
         new_h = int(img.height * ratio)
+
         img = img.resize((profile.image_width_px, new_h), Image.Resampling.LANCZOS)
+        # img = img.convert("1", dither=Image.Dither.FLOYDSTEINBERG)
         self.p.image(img, impl="bitImageRaster")
 
 
