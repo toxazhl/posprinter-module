@@ -2,7 +2,7 @@ import base64
 import time
 from io import BytesIO
 
-import fitz
+import pypdfium2 as pdfium
 from escpos.printer import Dummy, Escpos, Network, Serial
 
 try:
@@ -285,25 +285,19 @@ class PrinterHandler:
 def pdf_to_base64_images(pdf_bytes: bytes):
     result = []
 
-    try:
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    except Exception as e:
-        print(f"Це не PDF, йолопе: {e}")
-        return []
+    pdf = pdfium.PdfDocument(pdf_bytes)
 
-    for page_num in range(len(doc)):
-        page = doc.load_page(page_num)
+    for i in range(len(pdf)):
+        page = pdf[i]
 
-        zoom_matrix = fitz.Matrix(4, 4)
+        bitmap = page.render(scale=4)
 
-        pix = page.get_pixmap(matrix=zoom_matrix, alpha=False)
-
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        pil_image = bitmap.to_pil()
 
         buffered = BytesIO()
-        img.save(buffered, format="PNG")
+        pil_image.save(buffered, format="PNG")
+
         img_str = base64.b64encode(buffered.getvalue()).decode()
         result.append(img_str)
 
-    doc.close()
     return result
