@@ -1,4 +1,5 @@
 import base64
+import textwrap
 import time
 from io import BytesIO
 
@@ -169,10 +170,6 @@ class PrinterHandler:
                 self.p.set(align="left")
 
             if isinstance(task, TextTask):
-                # НЕ ЗАБУДЬ import textwrap ЗВЕРХУ, БОВДУР
-                import textwrap
-
-                # 1. Рахуємо відступ зліва (щоб центрувати сам "аркуш" на "принтері")
                 margin_base = max(
                     0, (profile.printer_total_chars - profile.paper_width_chars) // 2
                 )
@@ -181,44 +178,35 @@ class PrinterHandler:
                 align = task.align.lower()
                 original_text = task.value
 
-                # 2. Спочатку розбиваємо текст по ЯВНИХ переносах рядків (\n), які ти туди запхав
-                # keepends=False, щоб прибрати самі \n, ми їх додамо потім
                 explicit_lines = original_text.split("\n")
 
                 for paragraph in explicit_lines:
-                    # Якщо рядок порожній (наприклад, два \n підряд), просто друкуємо пустий рядок
                     if not paragraph:
                         self.p._raw(b"\n")
                         continue
 
-                    # 3. Тепер ріжемо довгі рядки, щоб вони влізли в ширину паперу
-                    # break_long_words=True розрубає навіть довгі слова, щоб не вилізло за межі
                     wrapped_chunks = textwrap.wrap(
                         paragraph, width=width, break_long_words=True
                     )
 
                     if not wrapped_chunks:
-                        # На випадок якоїсь магії, якщо текст був, а чанків нема
                         self.p._raw(b"\n")
                         continue
 
-                    # 4. Обробляємо КОЖЕН шматок (рядок) окремо
                     for chunk in wrapped_chunks:
                         chunk_len = len(chunk)
                         padding = 0
 
-                        # Рахуємо відступ для вирівнювання всередині ширини паперу
                         if align == "center":
                             padding = (width - chunk_len) // 2
                         elif align == "right":
                             padding = width - chunk_len
 
-                        # 5. Збираємо все до купи: Базовий відступ + Відступ вирівнювання + Текст
                         full_padding = margin_base + padding
                         final_line = (" " * full_padding) + chunk
 
-                        # Відправляємо на друк
                         self.p._raw(final_line.encode("cp1251", "replace") + b"\n")
+
             elif isinstance(task, TableTask):
                 margin_base = max(
                     0, (profile.printer_total_chars - profile.paper_width_chars) // 2
@@ -269,7 +257,8 @@ class PrinterHandler:
                 self.p._raw(bytes.fromhex(task.hex_data.replace(" ", "")))
 
         finally:
-            self.close()
+            if isinstance(self.p, Win32Raw):
+                self.close()
 
     def print_image(self, img_bytes: bytes, profile: PrinterProfile):
         img = Image.open(BytesIO(img_bytes))
@@ -279,55 +268,7 @@ class PrinterHandler:
         new_h = int(img.height * ratio)
 
         img = img.resize((profile.image_width_px, new_h), Image.Resampling.LANCZOS)
-        # img = img.convert("1", dither=Image.Dither.FLOYDSTEINBERG)
         self.p.image(img, impl="bitImageRaster")
-
-    def print_raw_win32(self, task, profile):
-        """
-        Цей метод друкує RAW дані напряму в Windows Spooler без зайвих класів.
-        Він гарантовано закриває хендл і відпускає чергу.
-        """
-        import win32print
-
-        printer_name = self.config.printer_name
-        hPrinter = win32print.OpenPrinter(printer_name)
-
-        try:
-            # Починаємо документ. "RAW" - це ключ!
-            hJob = win32print.StartDocPrinter(hPrinter, 1, ("POS_Receipt", None, "RAW"))
-
-            try:
-                # Починаємо сторінку (для сумісності)
-                win32print.StartPagePrinter(hPrinter)
-
-                # --- ГЕНЕРАЦІЯ БАЙТІВ (Тут твоя логіка формування чека) ---
-                # Ми використовуємо Dummy принтер, щоб згенерувати байти, не відправляючи їх нікуди
-                dummy_p = Dummy(profile=profile)
-
-                # Копіпастимо логіку обробки Task сюди (або виносимо в окремий метод generate_bytes)
-                if isinstance(task, TextTask):
-                    # ... (Твій код з textwrap, але пиши в dummy_p._raw) ...
-                    pass
-                elif isinstance(task, CutTask):
-                    dummy_p.cut()
-                # ... і так далі для всіх типів завдань ...
-
-                # Отримуємо готовий байт-код
-                raw_data = dummy_p.output
-
-                # --- ВІДПРАВКА ---
-                # Пишемо весь шматок байтів за один раз!
-                win32print.WritePrinter(hPrinter, raw_data)
-
-            finally:
-                # ЗАКІНЧУЄМО СТОРІНКУ
-                win32print.EndPagePrinter(hPrinter)
-                # ЗАКІНЧУЄМО ДОКУМЕНТ (ОСЬ ЦЕ ВІДПУСКАЄ СПУЛЕР!)
-                win32print.EndDocPrinter(hPrinter)
-
-        finally:
-            # ЗАКРИВАЄМО ХЕНДЛ
-            win32print.ClosePrinter(hPrinter)
 
 
 def pdf_to_base64_images(pdf_bytes: bytes):
