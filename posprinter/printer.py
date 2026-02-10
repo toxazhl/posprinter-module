@@ -100,16 +100,25 @@ class PrinterHandler:
             self.p = None
             raise RuntimeError(f"Connection failed: {e}")
 
-    def set_codepage_by_encoding(self, encoding: str):
+    def set_codepage_by_encoding(self, profile: PrinterProfile):
         if not self.p:
             return
 
-        if encoding in ["cp866", "ibm866"]:
-            self.p._raw(b"\x1b\x74\x11")
-        elif encoding in ["cp1251", "win1251", "windows-1251"]:
-            self.p._raw(b"\x1b\x74\x49")
-        elif encoding == "cp437":
-            self.p._raw(b"\x1b\x74\x00")
+        codepage_id = profile.codepage_id
+
+        if codepage_id is None:
+            encoding = profile.encoding.lower().replace("-", "")
+
+            if encoding in ["cp866", "ibm866"]:
+                codepage_id = 17
+            elif encoding in ["win1251", "cp1251", "windows1251"]:
+                codepage_id = 73
+            elif encoding == "pc437":
+                codepage_id = 0
+            else:
+                codepage_id = 0
+
+        self.p._raw(b"\x1b\x74" + bytes([codepage_id]))
 
     def connect_if_needed(self):
         if not self.is_connected or not self.p:
@@ -174,10 +183,10 @@ class PrinterHandler:
     def process_task(self, task: PrintTask, profile: PrinterProfile):
         self.connect_if_needed()
 
-        encoding = getattr(profile, "encoding", "cp866")
+        encoding = profile.encoding
 
         if hasattr(self, "set_codepage_by_encoding"):
-            self.set_codepage_by_encoding(encoding)
+            self.set_codepage_by_encoding(profile)
 
         try:
             if not isinstance(task, (ImageTask, PdfTask)):

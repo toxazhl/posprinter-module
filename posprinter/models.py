@@ -110,6 +110,8 @@ class PrinterProfile(BaseModel):
     printer_total_chars: int = Field(ge=20, le=100)
     paper_width_chars: int = Field(ge=10, le=100)
     image_width_px: int = Field(default=384, ge=100, le=3000)
+    encoding: str = "cp1251"
+    codepage_id: int | None = None
 
 
 class PrintJobRequest(BaseModel):
