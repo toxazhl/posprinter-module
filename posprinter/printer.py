@@ -57,7 +57,6 @@ class PrinterHandler:
             if isinstance(self.config, Win32Connection):
                 if not Win32Raw:
                     raise RuntimeError("Win32Raw printer is not available.")
-
                 self.p = Win32Raw(printer_name=self.config.printer_name)
 
             elif isinstance(self.config, SerialConnection):
@@ -87,12 +86,12 @@ class PrinterHandler:
             if hasattr(self.p, "open"):
                 self.p.open()
 
-            # To avoid dumb logs in console (The media.width.pixel...)
-            self.p.profile.profile_data["media"]["width"].pop("pixels", None)
+            # Fix for "The media.width.pixel..." logs
+            if hasattr(self.p, "profile"):
+                self.p.profile.profile_data["media"]["width"].pop("pixels", None)
 
+            # Ініціалізація (Reset)
             self.p._raw(b"\x1b\x40")
-            # self.p._raw(b"\x1b\x74\x11")
-            self.p._raw(b"\x1b\x74\x49")
 
             self.is_connected = True
 
@@ -100,6 +99,17 @@ class PrinterHandler:
             self.is_connected = False
             self.p = None
             raise RuntimeError(f"Connection failed: {e}")
+
+    def set_codepage_by_encoding(self, encoding: str):
+        if not self.p:
+            return
+
+        if encoding in ["cp866", "ibm866"]:
+            self.p._raw(b"\x1b\x74\x11")
+        elif encoding in ["cp1251", "win1251", "windows-1251"]:
+            self.p._raw(b"\x1b\x74\x49")
+        elif encoding == "cp437":
+            self.p._raw(b"\x1b\x74\x00")
 
     def connect_if_needed(self):
         if not self.is_connected or not self.p:
@@ -125,7 +135,6 @@ class PrinterHandler:
             except Exception:
                 pass
 
-            # 1. Offline (DLE EOT 1)
             printer_instance.device.write(b"\x10\x04\x01")
             status_byte = printer_instance.device.read(1)
 
@@ -139,7 +148,6 @@ class PrinterHandler:
             val = int.from_bytes(status_byte, "little")
             is_offline = bool(val & 0b00001000)
 
-            # 2. Paper (DLE EOT 4)
             printer_instance.device.write(b"\x10\x04\x04")
             paper_byte = printer_instance.device.read(1)
             is_paper_out = False
@@ -165,6 +173,12 @@ class PrinterHandler:
 
     def process_task(self, task: PrintTask, profile: PrinterProfile):
         self.connect_if_needed()
+
+        encoding = getattr(profile, "encoding", "cp866")
+
+        if hasattr(self, "set_codepage_by_encoding"):
+            self.set_codepage_by_encoding(encoding)
+
         try:
             if not isinstance(task, (ImageTask, PdfTask)):
                 self.p.set(align="left")
@@ -173,7 +187,6 @@ class PrinterHandler:
                 margin_base = max(
                     0, (profile.printer_total_chars - profile.paper_width_chars) // 2
                 )
-
                 width = profile.paper_width_chars
                 align = task.align.lower()
                 original_text = task.value
@@ -205,7 +218,16 @@ class PrinterHandler:
                         full_padding = margin_base + padding
                         final_line = (" " * full_padding) + chunk
 
-                        self.p._raw(final_line.encode("cp1251", "replace") + b"\n")
+                        # 2. ТУТ БУЛА ПОМИЛКА: Використовуємо динамічне кодування
+                        try:
+                            encoded_bytes = final_line.encode(encoding, "replace")
+                        except LookupError:
+                            print(
+                                f"⚠️ Encoding {encoding} not found, falling back to cp866"
+                            )
+                            encoded_bytes = final_line.encode("cp866", "replace")
+
+                        self.p._raw(encoded_bytes + b"\n")
 
             elif isinstance(task, TableTask):
                 margin_base = max(
@@ -229,7 +251,9 @@ class PrinterHandler:
                         else:
                             line_buffer += text_cut.ljust(width)
                     final_line = (" " * margin_base) + line_buffer
-                    self.p._raw(final_line.encode("cp1251", "replace") + b"\n")
+
+                    # 3. І ТУТ ТЕЖ ДИНАМІЧНЕ КОДУВАННЯ
+                    self.p._raw(final_line.encode(encoding, "replace") + b"\n")
 
             elif isinstance(task, ImageTask):
                 self.p.set(align="center")
@@ -243,7 +267,6 @@ class PrinterHandler:
                     self.p.set(align="center")
                     img_bytes = base64.b64decode(img_str)
                     self.print_image(img_bytes, profile)
-
                 self.p.set(align="left")
 
             elif isinstance(task, FeedTask):
@@ -256,9 +279,14 @@ class PrinterHandler:
             elif isinstance(task, RawTask):
                 self.p._raw(bytes.fromhex(task.hex_data.replace(" ", "")))
 
-        finally:
-            if isinstance(self.p, Win32Raw):
-                self.close()
+        except Exception as e:
+            print(f"Error processing task: {e}")
+            raise
+
+        # 4. Я ПРИБРАВ finally: self.close()
+        # НЕ МОЖНА закривати з'єднання після кожного рядка!
+        # Закривати треба, коли завершив ВЕСЬ чек.
+        # Це робить __exit__ або зовнішній код.
 
     def print_image(self, img_bytes: bytes, profile: PrinterProfile):
         img = Image.open(BytesIO(img_bytes))
@@ -268,6 +296,7 @@ class PrinterHandler:
         new_h = int(img.height * ratio)
 
         img = img.resize((profile.image_width_px, new_h), Image.Resampling.LANCZOS)
+        # Можна спробувати impl="graphics" для швидкості, якщо принтер підтримує
         self.p.image(img, impl="bitImageRaster")
 
 
