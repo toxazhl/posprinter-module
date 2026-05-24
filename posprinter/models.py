@@ -107,9 +107,10 @@ ConnectionConfig = Annotated[
 
 
 class PrinterProfile(BaseModel):
-    printer_total_chars: int = Field(ge=20, le=100)
-    paper_width_chars: int = Field(ge=10, le=100)
-    image_width_px: int = Field(default=384, ge=100, le=3000)
+    left_margin_dots: int
+    print_width_dots: int
+    encoding: str = "cp1251"
+    codepage_id: int | None = None
 
 
 class PrintJobRequest(BaseModel):
@@ -130,14 +131,6 @@ class CheckStatusRequest(BaseModel):
     connection: ConnectionConfig
 
 
-class PrintCalibrationImageRequest(BaseModel):
-    action: Literal["print_calibration_image"]
-    connection: ConnectionConfig
-    start: int = Field(default=450, ge=10, le=1500)
-    end: int = Field(default=700, ge=10, le=1500)
-    step: int = Field(default=10, ge=5, le=100)
-
-
 class PrintCalibrationTextRequest(BaseModel):
     action: Literal["print_calibration_text"]
     connection: ConnectionConfig
@@ -152,7 +145,6 @@ RequestModel = Annotated[
         PrintJobRequest,
         GetPrintersRequest,
         CheckStatusRequest,
-        PrintCalibrationImageRequest,
         PrintCalibrationTextRequest,
     ],
     Field(discriminator="action"),

@@ -28,7 +28,6 @@ from posprinter.models import (  # noqa: E402
     ErrorResponse,
     GetPrintersRequest,
     GetPrintersResponse,
-    PrintCalibrationImageRequest,
     PrintCalibrationTextRequest,
     PrintJobRequest,
     RequestModel,
@@ -44,7 +43,7 @@ def send_response(response_model: BaseResponse):
         json_str = response_model.model_dump_json(exclude_none=True)
         _REAL_STDOUT.write(json_str + "\n")
         _REAL_STDOUT.flush()
-    except Exception as e:
+    except Exception as e:
         sys.stderr.write(f"CRITICAL JSON ERROR: {e}\n")
 
 
@@ -74,9 +73,6 @@ def main():
                     service.print_job(request)
                     response = SuccessResponse()
 
-                elif isinstance(request, PrintCalibrationImageRequest):
-                    service.print_calibration_image(request)
-                    response = SuccessResponse()
                 elif isinstance(request, PrintCalibrationTextRequest):
                     service.print_calibration_text(request)
                     response = SuccessResponse()

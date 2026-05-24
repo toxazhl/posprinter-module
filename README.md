@@ -28,10 +28,14 @@ One of the following configurations must be passed with print or status requests
 *   **Dummy:** `{"type": "dummy"}` (For testing)
 
 ### Printer Profile (`profile`)
-Defines the physical characteristics of the printer for formatting.
-*   `printer_total_chars`: Characters per line (e.g., 42 or 48).
-*   `paper_width_chars`: Printable width chars.
-*   `image_width_px`: Width to resize images to (typically 384 or 512).
+Defines the printable area and character encoding for the print job. Values are sent to the printer as ESC/POS hardware commands (`GS L` for the left margin, `GS W` for the print width, `ESC t` for the codepage) before each job.
+
+*   `left_margin_dots` *(int, required)*: Left margin in dots. `0` = start at the physical left edge of the head.
+*   `print_width_dots` *(int, required)*: Width of the printable area in dots. For 80 mm @ 203 DPI typically `576`, for 58 mm — `384`. For 180 DPI clones — `512` / `360`. The image task auto-resizes pictures to this width, and the table task derives the character count from `print_width_dots // 12` (Font A).
+*   `encoding` *(str, default `"cp1251"`)*: Python encoding used to encode text bytes. Common: `cp1251` (Windows Cyrillic), `cp866` (DOS Cyrillic), `cp1125` (Ukrainian DOS, includes `Ґ`).
+*   `codepage_id` *(int, optional)*: Printer codepage command ID sent via `ESC t n`. If `null`, it is inferred from `encoding` (cp1251→73, cp866→17, otherwise 0). Set explicitly when your printer firmware uses non-standard IDs — discover the right one by running `print_calibration_text` and reading the codepage diagnostics block on paper.
+
+> **Calibration sets these values.** If unsure, run `print_calibration_text` once per printer model — the receipt shows safe-zone brackets (which give you `left_margin_dots` + `print_width_dots`) and a 17-row codepage matrix (which gives you `encoding` + `codepage_id`).
 
 ---
 
@@ -79,9 +83,10 @@ The main payload for printing. It requires a list of `tasks`.
     "printer_name": "Receipt Printer"
   },
   "profile": {
-    "printer_total_chars": 48,
-    "paper_width_chars": 48,
-    "image_width_px": 384
+    "left_margin_dots": 0,
+    "print_width_dots": 576,
+    "encoding": "cp1251",
+    "codepage_id": null
   },
   "tasks": [
     {
@@ -108,26 +113,18 @@ The main payload for printing. It requires a list of `tasks`.
 }
 ```
 
-### 4. Calibration (Image)
-Prints a series of images with varying densities/sizes to calibrate settings.
+### 4. Calibration
+Prints a single reference receipt that combines two diagnostics in one pass:
 
-```json
-{
-  "action": "print_calibration_image",
-  "connection": { "type": "dummy" },
-  "start": 450,
-  "end": 500,
-  "step": 10
-}
-```
+1.  **Safe-zone map** — a 640×1150 bitmap with a dots-ruler at the top and labeled brackets for the four common geometries: `80mm FULL (0-576)`, `58mm CENTER (96-480)`, `58mm LEFT (0-384)`, `58mm RIGHT (192-576)` for 203 DPI, plus the equivalents for 180 DPI clones. Look at the receipt and pick the bracket whose endpoints align with the physical edges of your paper — that pair gives you `left_margin_dots` (start) and `print_width_dots` (end − start).
+2.  **Codepage diagnostics** — prints the Cyrillic string `123 AБВабвІЇЄҐіїєґ` 17 times, each with a different `(codepage_id, encoding)` pair. Find the row where the text renders correctly and use that pair in `profile.codepage_id` + `profile.encoding`.
 
-### 5. Calibration (Text)
-Prints text grids to determine the correct character width configuration.
+The `start`, `end`, `step` parameters control an additional text-width sweep (font A character grids) used for legacy calibration; they don't affect the bitmap or codepage diagnostics above.
 
 ```json
 {
   "action": "print_calibration_text",
-  "connection": { "type": "dummy" },
+  "connection": { "type": "windows", "printer_name": "EPSON TM-T20X Receipt" },
   "start": 30,
   "end": 48,
   "step": 1
@@ -150,7 +147,7 @@ Prints text grids to determine the correct character width configuration.
 ```json
 {
   "status": "error",
-  "error": "Printer Error",
+  "error": "",
   "message": "Connection timed out",
   "traceback": "..."
 }
@@ -259,9 +256,10 @@ if __name__ == "__main__":
         "action": "print",
         "connection": {"type": "dummy"},
         "profile": {
-            "printer_total_chars": 48,
-            "paper_width_chars": 48,
-            "image_width_px": 384
+            "left_margin_dots": 0,
+            "print_width_dots": 576,
+            "encoding": "cp1251",
+            "codepage_id": None,
         },
         "tasks": [
             {"type": "text", "align": "center", "value": "TEST RECEIPT"},
