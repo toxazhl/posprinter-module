@@ -1,0 +1,620 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "CheckStatusRequest": {
+      "properties": {
+        "action": {
+          "const": "check_status",
+          "type": "string"
+        },
+        "connection": {
+          "$ref": "#/definitions/Connection"
+        }
+      },
+      "required": [
+        "action",
+        "connection"
+      ],
+      "title": "CheckStatusRequest",
+      "type": "object"
+    },
+    "CutTask": {
+      "properties": {
+        "type": {
+          "const": "cut",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "CutTask",
+      "type": "object"
+    },
+    "DummyConnection": {
+      "properties": {
+        "type": {
+          "const": "dummy",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "DummyConnection",
+      "type": "object"
+    },
+    "FeedTask": {
+      "properties": {
+        "type": {
+          "const": "feed",
+          "type": "string"
+        },
+        "lines": {
+          "default": 1,
+          "maximum": 10,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "FeedTask",
+      "type": "object"
+    },
+    "GetPrintersRequest": {
+      "properties": {
+        "action": {
+          "const": "get_printers",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "GetPrintersRequest",
+      "type": "object"
+    },
+    "ImageTask": {
+      "properties": {
+        "align": {
+          "default": "center",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "image",
+          "type": "string"
+        },
+        "data": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "data"
+      ],
+      "title": "ImageTask",
+      "type": "object"
+    },
+    "NetworkConnection": {
+      "properties": {
+        "type": {
+          "const": "network",
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "default": 9100,
+          "type": "integer"
+        },
+        "timeout": {
+          "default": 10,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "host"
+      ],
+      "title": "NetworkConnection",
+      "type": "object"
+    },
+    "PdfTask": {
+      "properties": {
+        "align": {
+          "default": "center",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "pdf",
+          "type": "string"
+        },
+        "data": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "data"
+      ],
+      "title": "PdfTask",
+      "type": "object"
+    },
+    "PrintCalibrationTextRequest": {
+      "properties": {
+        "action": {
+          "const": "print_calibration_text",
+          "type": "string"
+        },
+        "connection": {
+          "$ref": "#/definitions/Connection"
+        },
+        "start": {
+          "default": 20,
+          "maximum": 200,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "end": {
+          "default": 60,
+          "maximum": 200,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "step": {
+          "default": 2,
+          "maximum": 50,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "action",
+        "connection"
+      ],
+      "title": "PrintCalibrationTextRequest",
+      "type": "object"
+    },
+    "PrintJobRequest": {
+      "properties": {
+        "action": {
+          "const": "print",
+          "type": "string"
+        },
+        "connection": {
+          "$ref": "#/definitions/Connection"
+        },
+        "profile": {
+          "$ref": "#/definitions/PrinterProfile"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/definitions/PrintTask"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "action",
+        "connection",
+        "profile",
+        "tasks"
+      ],
+      "title": "PrintJobRequest",
+      "type": "object"
+    },
+    "PrinterProfile": {
+      "properties": {
+        "left_margin_dots": {
+          "type": "integer"
+        },
+        "print_width_dots": {
+          "type": "integer"
+        },
+        "encoding": {
+          "default": "cp1251",
+          "type": "string"
+        },
+        "codepage_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "left_margin_dots",
+        "print_width_dots"
+      ],
+      "title": "PrinterProfile",
+      "type": "object"
+    },
+    "RawTask": {
+      "properties": {
+        "type": {
+          "const": "raw",
+          "type": "string"
+        },
+        "hex_data": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "hex_data"
+      ],
+      "title": "RawTask",
+      "type": "object"
+    },
+    "SerialConnection": {
+      "properties": {
+        "type": {
+          "const": "serial",
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "baudrate": {
+          "default": 9600,
+          "type": "integer"
+        },
+        "bytesize": {
+          "default": 8,
+          "type": "integer"
+        },
+        "parity": {
+          "default": "N",
+          "enum": [
+            "N",
+            "E",
+            "O",
+            "M",
+            "S"
+          ],
+          "type": "string"
+        },
+        "stopbits": {
+          "default": 1,
+          "type": "integer"
+        },
+        "timeout": {
+          "default": 1,
+          "type": "integer"
+        },
+        "dsrdtr": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "port"
+      ],
+      "title": "SerialConnection",
+      "type": "object"
+    },
+    "TableTask": {
+      "properties": {
+        "align": {
+          "default": "center",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "table",
+          "type": "string"
+        },
+        "data": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "columns_ratio": {
+          "default": [
+            0.7,
+            0.3
+          ],
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "data"
+      ],
+      "title": "TableTask",
+      "type": "object"
+    },
+    "TextTask": {
+      "properties": {
+        "align": {
+          "default": "center",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "text",
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "TextTask",
+      "type": "object"
+    },
+    "Win32Connection": {
+      "properties": {
+        "type": {
+          "const": "windows",
+          "type": "string"
+        },
+        "printer_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "printer_name"
+      ],
+      "title": "Win32Connection",
+      "type": "object"
+    },
+    "Request": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/PrintJobRequest"
+        },
+        {
+          "$ref": "#/definitions/GetPrintersRequest"
+        },
+        {
+          "$ref": "#/definitions/CheckStatusRequest"
+        },
+        {
+          "$ref": "#/definitions/PrintCalibrationTextRequest"
+        }
+      ]
+    },
+    "SuccessResponse": {
+      "properties": {
+        "status": {
+          "const": "success",
+          "default": "success",
+          "type": "string"
+        }
+      },
+      "title": "SuccessResponse",
+      "type": "object"
+    },
+    "PrinterInfo": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "driver": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "port",
+        "driver"
+      ],
+      "title": "PrinterInfo",
+      "type": "object"
+    },
+    "GetPrintersResponse": {
+      "properties": {
+        "status": {
+          "const": "success",
+          "default": "success",
+          "type": "string"
+        },
+        "data": {
+          "items": {
+            "$ref": "#/definitions/PrinterInfo"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "title": "GetPrintersResponse",
+      "type": "object"
+    },
+    "PrinterStatusData": {
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        },
+        "online": {
+          "default": false,
+          "type": "boolean"
+        },
+        "paper_out": {
+          "default": false,
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "details": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "warning": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ready"
+      ],
+      "title": "PrinterStatusData",
+      "type": "object"
+    },
+    "CheckStatusResponse": {
+      "properties": {
+        "status": {
+          "const": "success",
+          "default": "success",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/PrinterStatusData"
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "title": "CheckStatusResponse",
+      "type": "object"
+    },
+    "ErrorResponse": {
+      "properties": {
+        "status": {
+          "const": "error",
+          "default": "error",
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "details": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "traceback": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "title": "ErrorResponse",
+      "type": "object"
+    },
+    "Connection": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/Win32Connection"
+        },
+        {
+          "$ref": "#/definitions/NetworkConnection"
+        },
+        {
+          "$ref": "#/definitions/SerialConnection"
+        },
+        {
+          "$ref": "#/definitions/DummyConnection"
+        }
+      ]
+    },
+    "PrintTask": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/TextTask"
+        },
+        {
+          "$ref": "#/definitions/ImageTask"
+        },
+        {
+          "$ref": "#/definitions/PdfTask"
+        },
+        {
+          "$ref": "#/definitions/TableTask"
+        },
+        {
+          "$ref": "#/definitions/FeedTask"
+        },
+        {
+          "$ref": "#/definitions/CutTask"
+        },
+        {
+          "$ref": "#/definitions/RawTask"
+        }
+      ]
+    }
+  }
+}

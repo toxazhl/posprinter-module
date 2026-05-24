@@ -28,7 +28,6 @@ from posprinter.models import (  # noqa: E402
     ErrorResponse,
     GetPrintersRequest,
     GetPrintersResponse,
-    PrintCalibrationImageRequest,
     PrintCalibrationTextRequest,
     PrintJobRequest,
     RequestModel,
@@ -75,9 +74,6 @@ def main():
                     service.print_job(request)
                     response = SuccessResponse()
 
-                elif isinstance(request, PrintCalibrationImageRequest):
-                    service.print_calibration_image(request)
-                    response = SuccessResponse()
                 elif isinstance(request, PrintCalibrationTextRequest):
                     service.print_calibration_text(request)
                     response = SuccessResponse()

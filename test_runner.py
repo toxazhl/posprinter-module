@@ -30,10 +30,12 @@ CONNECTION_CONFIG = {
 #     "port": 9100
 # }
 
-# Налаштування розмірів (для тексту)
+# Налаштування друкованої області (новий API: hardware-команди GS L / GS W / ESC t)
 PRINTER_SETUP = {
-    "printer_total_chars": 48,  # Фізична ширина (48 для 80мм)
-    "paper_width_chars": 48,  # Робоча область (32 для 58мм або відступів)
+    "left_margin_dots": 0,       # GS L — зсув від лівого краю голівки в dots
+    "print_width_dots": 576,     # GS W — ширина області друку в dots (80мм @ 203 DPI = 576)
+    "encoding": "cp1251",        # python-енкодинг для байтів тексту
+    "codepage_id": None,         # ESC t n — None = автогадання з encoding (cp1251→73, cp866→17)
 }
 
 IMAGE_FILENAME = "rec.png"  # Назва файлу поруч зі скриптом
@@ -108,6 +110,7 @@ def run_test():
     # Запускаємо модуль як підпроцес
     process = subprocess.Popen(
         ["uv", "run", "python", "-m", "posprinter"],
+        # ["./dist/posprinter.dist/posprinter"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -151,14 +154,19 @@ def run_test():
         pdf_data = image_to_base64(PDF_FILENAME)
 
         # 2. Формуємо запит (Згідно з новим Pydantic models)
+        req_calibration = {
+            "action": "print_calibration_text",
+            "connection": CONNECTION_CONFIG,
+            "start": 20,
+            "end": 60,
+            "step": 2,
+        }
+        print(json.dumps(req_calibration, indent=2, ensure_ascii=False))
+
         req_print = {
             "action": "print",
             "connection": CONNECTION_CONFIG,
-            "profile": {
-                "printer_total_chars": PRINTER_SETUP["printer_total_chars"],
-                "paper_width_chars": PRINTER_SETUP["paper_width_chars"],
-                "image_width_px": 450,
-            },
+            "profile": PRINTER_SETUP,
             "tasks": [
                 # Заголовок
                 {

@@ -11,3 +11,5 @@ wheels/
 .vscode/
 env/
 venv/
+docs/asyncapi
+.DS_Store
