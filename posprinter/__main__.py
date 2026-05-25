@@ -1,3 +1,22 @@
+# nuitka-project: --mode=standalone
+# nuitka-project: --lto=no
+# nuitka-project: --assume-yes-for-downloads
+# nuitka-project: --output-dir=dist
+# nuitka-project: --output-filename=posprinter
+# nuitka-project: --include-package-data=escpos
+# nuitka-project: --include-package=pypdfium2
+# nuitka-project: --python-flag=no_site
+# nuitka-project: --python-flag=no_warnings
+# nuitka-project: --nofollow-import-to=tkinter
+# nuitka-project: --nofollow-import-to=_tkinter
+# nuitka-project: --nofollow-import-to=PIL.ImageTk
+# nuitka-project: --nofollow-import-to=PIL.ImageShow
+# nuitka-project: --noinclude-dlls=*/libtcl9.0.dylib
+# nuitka-project: --noinclude-dlls=*/libtk9.0.dylib
+# nuitka-project: --noinclude-dlls=*/_tkinter*.so
+# nuitka-project: --noinclude-data-files=tcl/*
+# nuitka-project: --noinclude-data-files=tk/*
+
 import sys
 import warnings
 

@@ -86,15 +86,9 @@ jobs:
           # Він сам активує venv, сам знайде nuitka.
           # Не треба ніяких source activate.
           
-          uv run python -m nuitka \
-            --standalone \
-            --lto=no \
-            --assume-yes-for-downloads \
-            --output-dir=dist \
-            --output-filename=posprinter \
-            --include-package-data=escpos \
-            --include-package=pypdfium2 \
-            posprinter
+          # All Nuitka flags are declared as `# nuitka-project:` directives
+          # at the top of posprinter/__main__.py — config travels with the code.
+          uv run python -m nuitka posprinter
 
           if command -v ccache &> /dev/null; then
              ccache -s
