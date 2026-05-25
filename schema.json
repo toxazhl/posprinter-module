@@ -161,24 +161,6 @@
         },
         "connection": {
           "$ref": "#/definitions/Connection"
-        },
-        "start": {
-          "default": 20,
-          "maximum": 200,
-          "minimum": 10,
-          "type": "integer"
-        },
-        "end": {
-          "default": 60,
-          "maximum": 200,
-          "minimum": 10,
-          "type": "integer"
-        },
-        "step": {
-          "default": 2,
-          "maximum": 50,
-          "minimum": 1,
-          "type": "integer"
         }
       },
       "required": [

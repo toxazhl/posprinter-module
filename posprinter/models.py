@@ -135,10 +135,6 @@ class PrintCalibrationTextRequest(BaseModel):
     action: Literal["print_calibration_text"]
     connection: ConnectionConfig
 
-    start: int = Field(default=20, ge=10, le=200)
-    end: int = Field(default=60, ge=10, le=200)
-    step: int = Field(default=2, ge=1, le=50)
-
 
 RequestModel = Annotated[
     Union[

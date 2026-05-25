@@ -157,9 +157,6 @@ def run_test():
         req_calibration = {
             "action": "print_calibration_text",
             "connection": CONNECTION_CONFIG,
-            "start": 20,
-            "end": 60,
-            "step": 2,
         }
         print(json.dumps(req_calibration, indent=2, ensure_ascii=False))
 

@@ -70,7 +70,8 @@ The main payload for printing. It requires a list of `tasks`.
 **Task Types:**
 *   `text`: Prints string.
 *   `table`: Prints 2-column layout.
-*   `image`: Prints Base64 encoded image.
+*   `image`: Prints Base64-encoded image (PNG/JPG).
+*   `pdf`: Prints Base64-encoded PDF (rendered page-by-page).
 *   `feed`: Feeds paper.
 *   `cut`: Cuts paper.
 *   `raw`: Sends raw hex bytes.
@@ -119,15 +120,10 @@ Prints a single reference receipt that combines two diagnostics in one pass:
 1.  **Safe-zone map** — a 640×1150 bitmap with a dots-ruler at the top and labeled brackets for the four common geometries: `80mm FULL (0-576)`, `58mm CENTER (96-480)`, `58mm LEFT (0-384)`, `58mm RIGHT (192-576)` for 203 DPI, plus the equivalents for 180 DPI clones. Look at the receipt and pick the bracket whose endpoints align with the physical edges of your paper — that pair gives you `left_margin_dots` (start) and `print_width_dots` (end − start).
 2.  **Codepage diagnostics** — prints the Cyrillic string `123 AБВабвІЇЄҐіїєґ` 17 times, each with a different `(codepage_id, encoding)` pair. Find the row where the text renders correctly and use that pair in `profile.codepage_id` + `profile.encoding`.
 
-The `start`, `end`, `step` parameters control an additional text-width sweep (font A character grids) used for legacy calibration; they don't affect the bitmap or codepage diagnostics above.
-
 ```json
 {
   "action": "print_calibration_text",
-  "connection": { "type": "windows", "printer_name": "EPSON TM-T20X Receipt" },
-  "start": 30,
-  "end": 48,
-  "step": 1
+  "connection": { "type": "windows", "printer_name": "EPSON TM-T20X Receipt" }
 }
 ```
 
@@ -151,7 +147,6 @@ The `start`, `end`, `step` parameters control an additional text-width sweep (fo
   "message": "Connection timed out",
   "traceback": "..."
 }
-```
 ```
 
 ---

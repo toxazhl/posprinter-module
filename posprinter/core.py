@@ -125,7 +125,7 @@ class PrinterService:
         handler = self._get_handler(request.connection)
         try:
             # Ensure we have access to the underlying Escpos object
-            print_calibration_text(handler.p, request.start, request.end, request.step)
+            print_calibration_text(handler.p)
         finally:
             # Calibration is an edge case; safer to close connection immediately
             handler.close()

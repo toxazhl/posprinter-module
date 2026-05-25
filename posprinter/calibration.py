@@ -291,7 +291,7 @@ class CodepageTester:
         printer.text("\nDiagnostic Complete.\n\n")
 
 
-def print_calibration_text(p: Escpos, start: int, end: int, step: int) -> None:
+def print_calibration_text(p: Escpos) -> None:
     """
     Main orchestration function.
     """
