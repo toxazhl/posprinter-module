@@ -55,6 +55,25 @@ jobs:
           brew install ccache
           echo "CC=clang" >> $GITHUB_ENV
 
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          # ccache — different invocations cache C compiles between runs.
+          # llvm/clang — replaces MSVC for ~30% faster compile + faster link.
+          choco install ccache llvm --no-progress -y
+          echo "CC=clang" >> $env:GITHUB_ENV
+
+      - name: Exclude workspace from Defender (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          # Defender real-time scan on every .obj/.exe write costs ~30-50% of build time.
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}" -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionPath "${{ env.CCACHE_DIR }}" -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionPath "${{ env.NUITKA_CACHE_DIR }}" -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess "cl.exe","link.exe","clang.exe","clang++.exe","ccache.exe","python.exe" -ErrorAction SilentlyContinue
+
       - name: Cache Nuitka & CCache
         uses: actions/cache@v4
         with:

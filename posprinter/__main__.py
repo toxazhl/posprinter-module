@@ -5,6 +5,7 @@
 # nuitka-project: --output-filename=posprinter
 # nuitka-project: --include-package-data=escpos
 # nuitka-project: --include-package=pypdfium2
+# nuitka-project: --include-package=pkg_resources
 # nuitka-project: --python-flag=no_site
 # nuitka-project: --python-flag=no_warnings
 # nuitka-project: --nofollow-import-to=tkinter
@@ -16,6 +17,8 @@
 # nuitka-project: --noinclude-dlls=*/_tkinter*.so
 # nuitka-project: --noinclude-data-files=tcl/*
 # nuitka-project: --noinclude-data-files=tk/*
+# nuitka-project-if: {OS} == "Windows":
+#     nuitka-project: --clang
 
 import sys
 import warnings
