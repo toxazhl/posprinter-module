@@ -59,9 +59,6 @@ export interface PdfTask {
 export interface PrintCalibrationTextRequest {
   action: "print_calibration_text";
   connection: Connection;
-  start?: number;
-  end?: number;
-  step?: number;
 }
 export interface PrintJobRequest {
   action: "print";
