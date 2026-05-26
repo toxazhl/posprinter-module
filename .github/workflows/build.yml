@@ -61,8 +61,10 @@ jobs:
         run: |
           # ccache — different invocations cache C compiles between runs.
           # llvm/clang — replaces MSVC for ~30% faster compile + faster link.
+          # Do NOT set CC=clang: on Windows Nuitka needs clang-cl.exe (MSVC-style),
+          # but CC=clang routes to GNU-style clang.exe which then chokes on /Fo, /c, /D flags.
+          # With --clang in nuitka-project directives, Nuitka picks clang-cl.exe from LLVM itself.
           choco install ccache llvm --no-progress -y
-          echo "CC=clang" >> $env:GITHUB_ENV
 
       - name: Exclude workspace from Defender (Windows)
         if: runner.os == 'Windows'
