@@ -76,6 +76,17 @@ The main payload for printing. It requires a list of `tasks`.
 *   `cut`: Cuts paper.
 *   `raw`: Sends raw hex bytes.
 
+**Image / PDF rendering options** (`image` and `pdf` tasks):
+*   `dither` *(bool, default `false`)*: How the picture is reduced to 1-bit black/white.
+    *   `false` — hard luminance threshold. Every pixel becomes solid black or white, keeping glyph/line edges crisp. **Use for receipts, tickets, logos, line-art.**
+    *   `true` — Floyd-Steinberg dithering. Scatters dots to fake grayscale. **Use for photos and shaded graphics** (text printed this way looks smudged/grainy).
+*   `threshold` *(int 0–255, default `128`)*: Luminance cutoff used only when `dither` is `false`. Pixels brighter than this become white, darker become black. Raise it (e.g. `160`) for bolder/darker output if text comes out too thin; lower it if fine details fill in and merge.
+
+```json
+{ "type": "image", "data": "<base64>", "dither": false, "threshold": 150 }
+{ "type": "image", "data": "<base64 photo>", "dither": true }
+```
+
 ```json
 {
   "action": "print",

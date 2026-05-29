@@ -47,11 +47,15 @@ export interface GetPrintersRequest {
   action: "get_printers";
 }
 export interface ImageTask {
+  dither?: boolean;
+  threshold?: number;
   align?: "left" | "center" | "right";
   type: "image";
   data: string;
 }
 export interface PdfTask {
+  dither?: boolean;
+  threshold?: number;
   align?: "left" | "center" | "right";
   type: "pdf";
   data: string;
