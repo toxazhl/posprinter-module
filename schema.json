@@ -78,6 +78,16 @@
     },
     "ImageTask": {
       "properties": {
+        "dither": {
+          "default": false,
+          "type": "boolean"
+        },
+        "threshold": {
+          "default": 128,
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
         "align": {
           "default": "center",
           "enum": [
@@ -129,6 +139,16 @@
     },
     "PdfTask": {
       "properties": {
+        "dither": {
+          "default": false,
+          "type": "boolean"
+        },
+        "threshold": {
+          "default": 128,
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
         "align": {
           "default": "center",
           "enum": [

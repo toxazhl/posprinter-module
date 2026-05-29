@@ -38,12 +38,24 @@ class TableTask(BaseTask):
     columns_ratio: List[float] = [0.7, 0.3]
 
 
-class ImageTask(BaseTask):
+class ImageRenderMixin(BaseModel):
+    # How to convert the picture to 1-bit black/white for the thermal head.
+    # dither=False (default) uses a hard luminance threshold → crisp text and
+    # line-art, best for receipts/tickets. dither=True uses Floyd-Steinberg
+    # dithering → fakes grayscale, best for photos and shaded graphics.
+    dither: bool = False
+    # Luminance cutoff (0-255) used when dither=False. Pixels brighter become
+    # white, darker become black. Higher = bolder/darker print. Ignored when
+    # dither=True.
+    threshold: int = Field(default=128, ge=0, le=255)
+
+
+class ImageTask(BaseTask, ImageRenderMixin):
     type: Literal["image"]
     data: str  # Base64 string
 
 
-class PdfTask(BaseTask):
+class PdfTask(BaseTask, ImageRenderMixin):
     type: Literal["pdf"]
     data: str  # Base64 string
 

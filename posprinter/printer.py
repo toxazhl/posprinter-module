@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 # Standard Font A width in dots (commonly 12x24)
 FONT_A_WIDTH_DOTS = 12
 
+# Luminance cutoff (0-255) for converting images to 1-bit black/white.
+# Pixels brighter than this become white, darker become black. Higher values
+# print more pixels as black (bolder/darker); lower values print lighter.
+IMAGE_THRESHOLD = 128
+
 
 class PrinterHandler:
     """
@@ -337,7 +342,9 @@ class PrinterHandler:
     def _process_image_task(self, task: ImageTask, profile: PrinterProfile):
         self.p.set(align="left")
         img_bytes = base64.b64decode(task.data)
-        self._print_image_bytes(img_bytes, profile)
+        self._print_image_bytes(
+            img_bytes, profile, dither=task.dither, threshold=task.threshold
+        )
         self.p.set(align="left")
 
     def _process_pdf_task(self, task: PdfTask, profile: PrinterProfile):
@@ -345,10 +352,18 @@ class PrinterHandler:
         images = self._pdf_to_base64_images(base64.b64decode(task.data))
         for img_str in images:
             img_bytes = base64.b64decode(img_str)
-            self._print_image_bytes(img_bytes, profile)
+            self._print_image_bytes(
+                img_bytes, profile, dither=task.dither, threshold=task.threshold
+            )
         self.p.set(align="left")
 
-    def _print_image_bytes(self, img_bytes: bytes, profile: PrinterProfile):
+    def _print_image_bytes(
+        self,
+        img_bytes: bytes,
+        profile: PrinterProfile,
+        dither: bool = False,
+        threshold: int = IMAGE_THRESHOLD,
+    ):
         """
         Resizes and prints an image.
         Uses `print_width_dots` from the profile to determine target width.
@@ -378,7 +393,22 @@ class PrinterHandler:
         new_h = int(img.height * ratio)
 
         img = img.resize((target_width, new_h), Image.Resampling.LANCZOS)
-        img = img.convert("1")
+
+        # Convert to 1-bit for the thermal head. Either way the OUTPUT is pure
+        # black/white — no gray pixel ever reaches the printer.
+        if dither:
+            # Floyd-Steinberg dithering fakes grayscale by scattering dots.
+            # Good for photos/shaded graphics, bad for text (looks smudged).
+            img = img.convert("1")
+        else:
+            # Hard luminance threshold: every pixel becomes solid black or
+            # white. Keeps glyph edges crisp — best for receipts/line-art.
+            # LANCZOS-then-threshold beats threshold-then-NEAREST here: it gives
+            # smoother edges on upscaled text and preserves thin features (e.g.
+            # dashed rules) that native-res thresholding would drop.
+            img = img.convert("L").point(
+                lambda px: 255 if px >= threshold else 0, mode="1"
+            )
 
         # Use raster bit image for better compatibility and performance
         self.p.image(img, impl="bitImageRaster")
