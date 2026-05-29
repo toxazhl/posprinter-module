@@ -1,6 +1,5 @@
 import base64
 import logging
-import time
 from io import BytesIO
 from typing import List, Optional
 
@@ -122,11 +121,6 @@ class PrinterHandler:
                 pass
         self.p = None
         self.is_connected = False
-
-    def reconnect(self):
-        self.close()
-        time.sleep(0.5)
-        self.connect()
 
     def connect_if_needed(self):
         if not self.is_connected or not self.p:

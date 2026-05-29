@@ -125,8 +125,6 @@ def main():
 
     except KeyboardInterrupt:
         pass
-    finally:
-        service.close_all()
 
 
 if __name__ == "__main__":

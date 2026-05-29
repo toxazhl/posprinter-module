@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import List
 
 try:
     import win32print
@@ -22,55 +22,18 @@ logger = logging.getLogger(__name__)
 
 class PrinterService:
     """
-    Singleton service responsible for managing printer connections and
-    executing print jobs.
+    Service responsible for executing print operations.
+
+    Connections are NOT cached. Each operation opens a fresh connection, uses
+    it, and closes it (via ``PrinterHandler``'s context manager). This is the
+    only robust model for network/serial POS printers: a long-lived daemon that
+    holds persistent sockets inevitably hits stale connections — network
+    printers silently drop idle TCP links (ECONNRESET / WinError 10054), many
+    accept only one connection at a time, and USB-serial adapters can be
+    unplugged. A per-operation connection sidesteps all of that with negligible
+    cost at human (cash-desk) printing rates, and needs no reconnect/retry/sleep
+    logic to stay healthy.
     """
-
-    def __init__(self):
-        self._handlers: Dict[str, PrinterHandler] = {}
-
-    def _get_resource_key(self, config: ConnectionConfig) -> str:
-        """Generates a unique key for connection caching."""
-        if config.type == "serial":
-            return f"serial:{config.port}"
-        elif config.type == "windows":
-            return f"windows:{config.printer_name}"
-        elif config.type == "dummy":
-            return "dummy"
-        elif config.type == "network":
-            return f"network:{config.host}:{config.port}"
-        return f"unknown:{id(config)}"
-
-    def _get_handler(self, config: ConnectionConfig) -> PrinterHandler:
-        """
-        Retrieves an existing handler or creates a new one.
-        Ensures the configuration matches the cached instance.
-        """
-        key = self._get_resource_key(config)
-
-        if key in self._handlers:
-            handler = self._handlers[key]
-            if handler.config != config:
-                logger.info(f"Configuration changed for {key}. Reconnecting.")
-                handler.close()
-                del self._handlers[key]
-            else:
-                handler.connect_if_needed()
-                return handler
-
-        handler = PrinterHandler(config)
-        handler.connect_if_needed()
-        self._handlers[key] = handler
-        return handler
-
-    def close_all(self):
-        """Gracefully closes all active printer connections."""
-        for key, handler in self._handlers.items():
-            try:
-                handler.close()
-            except Exception as e:
-                logger.error(f"Error closing handler {key}: {e}")
-        self._handlers.clear()
 
     # --- API Methods ---
 
@@ -92,43 +55,26 @@ class PrinterService:
 
     def check_status(self, config: ConnectionConfig) -> PrinterStatusData:
         """Checks the hardware status of the printer."""
-        handler = self._get_handler(config)
-        try:
-            return handler.get_status()
-        except OSError:
-            # Attempt one reconnection before failing
-            handler.reconnect()
+        with PrinterHandler(config) as handler:
             return handler.get_status()
 
     def print_job(self, request: PrintJobRequest) -> None:
-        """
-        Executes a full print job consisting of multiple tasks.
-        """
-        handler = self._get_handler(request.connection)
-        try:
+        """Executes a full print job consisting of multiple tasks."""
+        with PrinterHandler(request.connection) as handler:
             # Initialize hardware layout (Margins/Width) before the job starts
             handler.setup_hardware_layout(request.profile)
 
             for task in request.tasks:
                 handler.process_task(task, request.profile)
 
-        except (OSError, RuntimeError) as e:
-            logger.error(f"Print job failed: {e}")
-            handler.close()
-            raise e
-
-        finally:
+            # Win32 buffers the job and sends it to the spooler on flush/close;
+            # for network/serial this is a no-op (bytes are already on the wire).
             handler.flush()
 
     def print_calibration_text(self, request: PrintCalibrationTextRequest) -> None:
         """Executes a calibration test print."""
-        handler = self._get_handler(request.connection)
-        try:
-            # Ensure we have access to the underlying Escpos object
+        with PrinterHandler(request.connection) as handler:
             print_calibration_text(handler.p)
-        finally:
-            # Calibration is an edge case; safer to close connection immediately
-            handler.close()
 
 
 # Singleton Instance
