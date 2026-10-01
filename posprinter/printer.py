@@ -1,5 +1,6 @@
 import base64
 import logging
+import socket
 from io import BytesIO
 from typing import List, Optional
 
@@ -115,12 +116,35 @@ class PrinterHandler:
     def close(self):
         """Closes the connection safely."""
         if self.p:
+            self._drain_network_input()
             try:
                 self.p.close()
             except Exception:
                 pass
         self.p = None
         self.is_connected = False
+
+    def _drain_network_input(self):
+        """
+        Read and discard any unread inbound bytes before closing a TCP printer
+        connection (e.g. Epson ASB status the printer pushes on its own).
+
+        Closing a socket while data sits unread in the receive buffer makes the
+        OS abort the connection with an RST instead of a graceful FIN. An RST
+        discards the still-unacknowledged tail of the last command we sent, so a
+        raster (GS v 0) image gets truncated and the printer is left waiting for
+        the missing pixel bytes — the next receipt then prints as garbage.
+        """
+        dev = getattr(self.p, "device", None)
+        if not isinstance(dev, socket.socket):
+            return
+        try:
+            dev.setblocking(False)  # non-blocking: drain what's there, no latency
+            while dev.recv(4096):
+                pass
+        except (BlockingIOError, OSError):
+            # nothing left to read (or read error) — done draining.
+            pass
 
     def connect_if_needed(self):
         if not self.is_connected or not self.p:
