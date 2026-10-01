@@ -1,9 +1,11 @@
 [project]
 name = "posprinter-module"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "JSON stdin/stdout daemon for ESC/POS receipt printers"
 readme = "README.md"
-requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
 dependencies = [
     "escpos>=2.0.0",
     "pillow>=12.0.0",

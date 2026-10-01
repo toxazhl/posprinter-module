@@ -4,6 +4,7 @@ import queue
 import subprocess
 import threading
 import time
+from pathlib import Path
 
 CONNECTION_CONFIG = {
     "type": "serial",
@@ -20,7 +21,7 @@ PRINTER_SETUP = {
     "codepage_id": None,
 }
 
-IMAGE_FILENAME = "test_ticket.png"
+IMAGE_FILENAME = str(Path(__file__).with_name("test_ticket.png"))
 
 
 def enqueue_output(out, q):

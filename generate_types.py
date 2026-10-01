@@ -1,7 +1,7 @@
 """
 Generates two artifacts from Pydantic models for frontend consumption:
 
-  schema.json  — canonical JSON Schema (draft 2020-12) with every
+  schema.json  — canonical JSON Schema (draft-07) with every
                  request/response type and shared $defs. Language-agnostic.
   types.ts     — TypeScript interfaces derived from schema.json via
                  `npx json-schema-to-typescript`. Requires Node/npx.

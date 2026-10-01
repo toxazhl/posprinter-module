@@ -277,3 +277,22 @@ if __name__ == "__main__":
     print(f"Response: {json.dumps(resp, indent=2)}\n")
 
     client.close()
+
+## Development
+
+```bash
+uv sync                                     # Python 3.12 and dev tools (Nuitka)
+uv run python -m posprinter                 # run the daemon from source
+uv run python generate_types.py             # refresh schema.json and types.ts after model changes
+uv run python scripts/test_runner.py        # manual checks against a real printer (edit the port first)
+```
+
+## Build
+
+`uv run python -m nuitka posprinter` produces a standalone `dist/posprinter.dist/`. All Nuitka
+flags live in `posprinter/__main__.py` as `# nuitka-project:` directives. The Windows build used by
+the terminal apps comes from the `Build Nuitka App` workflow (`.github/workflows/build.yml`).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
